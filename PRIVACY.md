@@ -1,4 +1,4 @@
-# Privacy Policy - NoBullshit Content Filter
+# Privacy Policy - Nobuco
 
 **Last updated**: January 2026
 

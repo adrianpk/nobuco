@@ -120,31 +120,65 @@ Agree? 💯`;
 
 // Test function - copy the RULES and score function from content.js
 function testSample(text, label) {
+  // Each rule returns a score (0 = no match, 1 = match, 2 = strong match)
   const RULES = [
-    t => (t.match(/\n/g) || []).length >= 4,
-    t => t.length < 300,
-    t => /\p{Extended_Pictographic}/u.test(t),
-    t => t.split("\n").filter(l => l.trim().length < 60).length >= 5,
-    t => /(🔥|🚀|💯){2,}/u.test(t),
-    t => /^(Wild|Hot take|Unpopular opinion|Controversial|Real talk|Let that sink in|Mind[.\s]*blown|Unsettling|Shocking|Game[- ]changer|This changes everything)/i.test(t.trim()),
+    t => ((t.match(/\n/g) || []).length >= 4) ? 1 : 0,
+    t => (t.length < 300) ? 1 : 0,
+    t => /\p{Extended_Pictographic}/u.test(t) ? 1 : 0,
+    t => (t.split("\n").filter(l => l.trim().length < 60).length >= 5) ? 1 : 0,
+    t => /(🔥|🚀|💯){2,}/u.test(t) ? 1 : 0,
+    t => /^(Wild|Hot take|Unpopular opinion|Controversial|Real talk|Let that sink in|Mind[.\s]*blown|Unsettling|Shocking|Game[- ]changer|This changes everything)/i.test(t.trim()) ? 1 : 0,
     t => {
       const lines = t.split("\n").filter(l => l.trim().length > 0);
       const veryShortLines = lines.filter(l => l.trim().length < 30).length;
-      return lines.length > 10 && (veryShortLines / lines.length) > 0.5;
+      return (lines.length > 10 && (veryShortLines / lines.length) > 0.5) ? 1 : 0;
     },
-    t => (t.match(/[→↳•✓✔✅❌]/g) || []).length >= 3,
+    t => ((t.match(/[→↳•✓✔✅❌]/g) || []).length >= 3) ? 1 : 0,
+    t => {
+      // High paragraph fragmentation - weight 2
+      const blocks = [];
+      let current = [];
+      for (const line of t.split('\n')) {
+        if (line.trim() === '') {
+          if (current.length > 0) {
+            blocks.push(current);
+            current = [];
+          }
+        } else {
+          current.push(line);
+        }
+      }
+      if (current.length > 0) blocks.push(current);
+      const singleLineBlocks = blocks.filter(b => b.length === 1).length;
+      return (blocks.length >= 6 && (singleLineBlocks / blocks.length) > 0.7) ? 2 : 0;
+    },
   ];
 
-  const matches = RULES.filter(r => r(text)).length;
-  const score = matches / RULES.length;
-  const threshold = 0.5; // Should match content.js
+  const MAX_SCORE = 10; // 8 rules × 1 + fragmentation × 2
+  const points = RULES.reduce((sum, rule) => sum + rule(text), 0);
+  const score = points / MAX_SCORE;
+  const threshold = 0.4; // Should match content.js
+
+  // Count paragraph fragmentation for debug output
+  const blocks = [];
+  let current = [];
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') {
+      if (current.length > 0) { blocks.push(current); current = []; }
+    } else {
+      current.push(line);
+    }
+  }
+  if (current.length > 0) blocks.push(current);
+  const singleLineBlocks = blocks.filter(b => b.length === 1).length;
 
   console.log(`\n=== ${label} ===`);
   console.log(`Score: ${score.toFixed(2)} (threshold: ${threshold})`);
-  console.log(`Action: ${score >= threshold ? 'HIDDEN ✅' : 'VISIBLE ❌'}`);
+  console.log(`Action: ${score >= threshold ? 'HIDDEN' : 'VISIBLE'}`);
   console.log(`Line breaks: ${(text.match(/\n/g) || []).length}`);
   console.log(`Length: ${text.length}`);
-  console.log(`Short lines: ${text.split("\n").filter(l => l.trim().length < 60).length}`);
+  console.log(`Short lines (<60): ${text.split("\n").filter(l => l.trim().length < 60).length}`);
+  console.log(`Paragraphs: ${blocks.length} total, ${singleLineBlocks} single-line (${(singleLineBlocks/blocks.length*100).toFixed(0)}%)`);
   console.log(`Has emojis: ${/\p{Extended_Pictographic}/u.test(text)}`);
 }
 
@@ -183,8 +217,56 @@ Practice without it regularly.
 
 Your brain is your greatest asset, so use AI wisely, not blindly.`;
 
+// Example 5: Bro-style fragmentation without emojis or bait openers
+// Tests the paragraph fragmentation heuristic - each "paragraph" is a single line
+const SAMPLE_FRAGMENTED = `So, here's my morning routine wrapped:
+
+Wake up at 5am. No alarm needed. Your body adapts after two weeks.
+
+Cold shower for exactly 3 minutes. It activates your nervous system.
+
+Journaling comes next. Write three pages before you check any screen.
+
+Then the real work begins. Deep focus blocks of 90 minutes each.
+
+No meetings before noon. Protect your creative hours.
+
+Lunch is always the same. Protein and vegetables. No decisions needed.
+
+Afternoon is for calls and collaboration. Energy is lower anyway.
+
+Evening review takes 10 minutes. What worked. What didn't.
+
+Sleep by 10pm. No exceptions.
+
+I am sure I am missing some nuances, but these are the fundamentals.
+
+Morning routines build momentum.
+
+Evening routines build consistency.
+
+Together, they compound into results.
+
+This system changed everything for me.
+
+Curious to hear what works for you.
+
+DM me if you want the full breakdown: link.to/my-course`;
+
+// Example 6: Legitimate prose - should NOT be filtered
+// Real paragraphs with substance, ideas that flow, actual writing
+const SAMPLE_LEGIT_PROSE = `The obsession with metrics can quietly erode the thing it claims to measure. When we optimize for engagement, we start writing for the algorithm rather than the reader. The posts that perform best aren't always the ones worth reading twice.
+
+There's a difference between clarity and oversimplification. Dense ideas sometimes require dense prose. Not every thought can be compressed into a one-liner without losing the nuance that made it worth sharing in the first place. The challenge is knowing when complexity serves the reader and when it just flatters the writer.
+
+What concerns me most is the feedback loop. Writers see what works, replicate the format, and gradually forget there were other ways to communicate. The platform rewards a certain cadence, and soon that cadence feels like the only option. We mistake familiarity for effectiveness.
+
+Maybe the answer isn't to abandon short-form writing entirely, but to remain suspicious of any format that never asks us to slow down. If every post reads the same way, something has been lost, even if we can't quite name it yet.`;
+
 // Run tests
 testSample(SAMPLE_SILLY_1, "SAMPLE 1: Whitespace abuse + bait");
 testSample(SAMPLE_NORMAL, "SAMPLE 2: Normal professional post");
 testSample(SAMPLE_SILLY_2, "SAMPLE 3: One-liner spam");
 testSample(SAMPLE_REAL_LINKEDIN, "SAMPLE 4: Real LinkedIn post (Unsettling + arrows)");
+testSample(SAMPLE_FRAGMENTED, "SAMPLE 5: Bro-style fragmentation (no emojis)");
+testSample(SAMPLE_LEGIT_PROSE, "SAMPLE 6: Legitimate prose (should NOT be filtered)");

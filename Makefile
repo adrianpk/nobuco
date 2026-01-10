@@ -1,6 +1,3 @@
-# Makefile for Nobuco Chrome Extension
-# Simplifies common development tasks
-
 .PHONY: help build clean test package install release
 
 # Default target - show help

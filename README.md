@@ -1,6 +1,6 @@
 # Nobuco
 
-> **No**Bullshit**Co**ntent - A privacy-first Chrome extension that filters LinkedIn posts based on writing style, not content.
+> A privacy-first Chrome extension that filters LinkedIn posts based on writing style, not content.
 
 Nobuco is your one-punch LinkedIn filter that knocks out spammy formatting.
 

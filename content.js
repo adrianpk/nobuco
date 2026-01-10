@@ -27,30 +27,54 @@
  */
 
 // --- Config ---
-const THRESHOLD = 0.5; // Posts scoring >= 50% on heuristics get hidden (adjust 0.0-1.0)
+const THRESHOLD = 0.4; // Posts scoring >= 40% on heuristics get hidden (adjust 0.0-1.0)
 const DEBUG = true;    // Set to false for production - logs filtering decisions to console
 
 // --- Heuristic rules ---
+// Each rule returns a score (0 = no match, 1 = match, 2 = strong match)
+// This allows weighting certain patterns more heavily
 const RULES = [
-  t => (t.match(/\n/g) || []).length >= 4,                 // many line breaks
-  t => t.length < 300,                                    // deceptively short length
-  t => /\p{Extended_Pictographic}/u.test(t),              // contains emojis (modern form)
-  t => t.split("\n").filter(l => l.trim().length < 60).length >= 5, // many short lines
-  t => /(🔥|🚀|💯){2,}/u.test(t),                          // reinforcement: repeated emojis
-  t => /^(Wild|Hot take|Unpopular opinion|Controversial|Real talk|Let that sink in|Mind[.\s]*blown|Unsettling|Shocking|Game[- ]changer|This changes everything)/i.test(t.trim()), // bait openers
+  t => ((t.match(/\n/g) || []).length >= 4) ? 1 : 0,                 // many line breaks
+  t => (t.length < 300) ? 1 : 0,                                      // deceptively short length
+  t => /\p{Extended_Pictographic}/u.test(t) ? 1 : 0,                  // contains emojis
+  t => (t.split("\n").filter(l => l.trim().length < 60).length >= 5) ? 1 : 0, // many short lines
+  t => /(🔥|🚀|💯){2,}/u.test(t) ? 1 : 0,                             // repeated hype emojis
+  t => /^(Wild|Hot take|Unpopular opinion|Controversial|Real talk|Let that sink in|Mind[.\s]*blown|Unsettling|Shocking|Game[- ]changer|This changes everything)/i.test(t.trim()) ? 1 : 0,
   t => {
     // High whitespace-to-content ratio (lots of short dramatic lines)
     const lines = t.split("\n").filter(l => l.trim().length > 0);
     const veryShortLines = lines.filter(l => l.trim().length < 30).length;
-    return lines.length > 10 && (veryShortLines / lines.length) > 0.5;
+    return (lines.length > 10 && (veryShortLines / lines.length) > 0.5) ? 1 : 0;
   },
-  t => (t.match(/[→↳•✓✔✅❌]/g) || []).length >= 3,  // excessive decorative bullets/arrows (includes ↳)
+  t => ((t.match(/[→↳•✓✔✅❌]/g) || []).length >= 3) ? 1 : 0,  // decorative bullets/arrows
+  t => {
+    // High paragraph fragmentation: many "paragraphs" that are just single lines
+    // Detects bro-style posts where every sentence is its own paragraph
+    // Weight: 2 (this pattern alone is a strong signal)
+    const blocks = [];
+    let current = [];
+    for (const line of t.split('\n')) {
+      if (line.trim() === '') {
+        if (current.length > 0) {
+          blocks.push(current);
+          current = [];
+        }
+      } else {
+        current.push(line);
+      }
+    }
+    if (current.length > 0) blocks.push(current);
+    const singleLineBlocks = blocks.filter(b => b.length === 1).length;
+    return (blocks.length >= 6 && (singleLineBlocks / blocks.length) > 0.7) ? 2 : 0;
+  },
 ];
+
+const MAX_SCORE = 10; // sum of all weights (8 rules × 1 + fragmentation × 2)
 
 // --- Scoring ---
 function score(text) {
-  const matches = RULES.filter(r => r(text)).length;
-  return matches / RULES.length;
+  const points = RULES.reduce((sum, rule) => sum + rule(text), 0);
+  return points / MAX_SCORE;
 }
 
 // --- DOM helpers ---

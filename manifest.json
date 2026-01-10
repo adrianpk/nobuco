@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nobuco",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Filters spam-like LinkedIn posts: excessive line breaks, emoji spam, engagement bait. 100% local, zero tracking.",
   "author": "nobuco",
 
