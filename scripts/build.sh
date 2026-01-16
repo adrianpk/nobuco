@@ -32,6 +32,9 @@ mkdir -p build/icons
 echo -e "${YELLOW}[3/5]${NC} Copying files..."
 cp manifest.json build/
 cp icons/*.png build/icons/
+cp popup.html build/
+cp popup.css build/
+cp popup.js build/
 
 # Copy content.js and disable DEBUG mode
 echo -e "${YELLOW}[4/5]${NC} Processing content.js (DEBUG = false)..."

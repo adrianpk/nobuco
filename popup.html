@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Nobuco</h1>
+    <p class="subtitle">LinkedIn feed filter</p>
+
+    <div class="options">
+      <label class="toggle">
+        <input type="checkbox" id="filterSpam" checked>
+        <span class="label-text">Filter spammy posts</span>
+        <span class="hint">Hides AI-style formatting, emoji spam, engagement bait</span>
+      </label>
+
+      <label class="toggle">
+        <input type="checkbox" id="filterPolls" checked>
+        <span class="label-text">Filter polls</span>
+        <span class="hint">Hides posts containing polls</span>
+      </label>
+    </div>
+
+    <p class="footer">100% local processing</p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

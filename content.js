@@ -30,6 +30,34 @@
 const THRESHOLD = 0.4; // Posts scoring >= 40% on heuristics get hidden (adjust 0.0-1.0)
 const DEBUG = true;    // Set to false for production - logs filtering decisions to console
 
+// --- Settings (loaded from storage) ---
+let settings = {
+  filterSpam: true,
+  filterPolls: true
+};
+
+// Load settings from storage
+chrome.storage.sync.get(settings, (stored) => {
+  settings = { ...settings, ...stored };
+  if (DEBUG) console.log('[nobuco] Settings loaded:', settings);
+  process(); // Re-process with loaded settings
+});
+
+// Listen for setting changes
+chrome.storage.onChanged.addListener((changes) => {
+  for (const key in changes) {
+    settings[key] = changes[key].newValue;
+  }
+  if (DEBUG) console.log('[nobuco] Settings updated:', settings);
+  // Reset processed posts to re-evaluate with new settings
+  document.querySelectorAll('[data-silly-checked]').forEach(post => {
+    delete post.dataset.sillyChecked;
+    post.style.display = '';
+    delete post.dataset.nobucohidden;
+  });
+  process();
+});
+
 // --- Heuristic rules ---
 // Each rule returns a score (0 = no match, 1 = match, 2 = strong match)
 // This allows weighting certain patterns more heavily
@@ -83,7 +111,7 @@ function findPosts() {
   return document.querySelectorAll([
     'div.feed-shared-update-v2',
     'div[data-urn^="urn:li:activity"]',
-    'div.feed-shared-update-v2__control-menu-container'
+    'div.fie-impression-container'
   ].join(', '));
 }
 
@@ -106,6 +134,22 @@ function extractText(post) {
   return "";
 }
 
+function hasPoll(post) {
+  // Detect LinkedIn polls by their DOM structure
+  const pollSelectors = [
+    'div.update-components-poll',
+    'fieldset[role="radiogroup"]',
+    '.update-components-poll-option'
+  ];
+
+  for (const selector of pollSelectors) {
+    if (post.querySelector(selector)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // --- Processing ---
 function process() {
   findPosts().forEach(post => {
@@ -113,31 +157,50 @@ function process() {
     if (post.dataset.sillyChecked) return;
     post.dataset.sillyChecked = "true";
 
-    const text = extractText(post);
-    if (!text) {
-      if (DEBUG) console.log('[nobuco] No text extracted from post, skipping', post);
-      return; // Conservative: if we can't read it, leave it visible
+    let shouldHide = false;
+    let hideReason = '';
+
+    // Check for polls first (if enabled)
+    if (settings.filterPolls && hasPoll(post)) {
+      shouldHide = true;
+      hideReason = 'POLL';
+      if (DEBUG) {
+        console.log('[nobuco] Post analysis:', {
+          reason: 'poll detected',
+          action: 'HIDDEN'
+        });
+      }
     }
 
-    const postScore = score(text);
-    const shouldHide = postScore >= THRESHOLD;
+    // Check spam heuristics (if enabled and not already hidden)
+    if (!shouldHide && settings.filterSpam) {
+      const text = extractText(post);
+      if (!text) {
+        if (DEBUG) console.log('[nobuco] No text extracted from post, skipping', post);
+        return; // Conservative: if we can't read it, leave it visible
+      }
 
-    if (DEBUG) {
-      console.log('[nobuco] Post analysis:', {
-        score: postScore.toFixed(2),
-        threshold: THRESHOLD,
-        action: shouldHide ? 'HIDDEN' : 'VISIBLE',
-        preview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-        lineBreaks: (text.match(/\n/g) || []).length,
-        length: text.length,
-        hasEmojis: /\p{Extended_Pictographic}/u.test(text)
-      });
+      const postScore = score(text);
+      shouldHide = postScore >= THRESHOLD;
+      hideReason = 'SPAM';
+
+      if (DEBUG) {
+        console.log('[nobuco] Post analysis:', {
+          score: postScore.toFixed(2),
+          threshold: THRESHOLD,
+          action: shouldHide ? 'HIDDEN' : 'VISIBLE',
+          preview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+          lineBreaks: (text.match(/\n/g) || []).length,
+          length: text.length,
+          hasEmojis: /\p{Extended_Pictographic}/u.test(text)
+        });
+      }
     }
 
-    // Hide only if score exceeds threshold
+    // Hide if any filter matched
     if (shouldHide) {
       post.style.display = "none";
-      post.dataset.nobucohidden = "true"; // Mark for debugging
+      post.dataset.nobucohidden = hideReason;
     }
   });
 }

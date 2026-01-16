@@ -25,10 +25,10 @@ The extension:
 
 ## Permissions Explained
 
-The extension requires **zero special permissions**.
+The extension uses minimal permissions:
 
-It only needs:
 - **Content script access to `linkedin.com/*`** - to read and hide posts on LinkedIn pages
+- **`storage`** - to save your filter preferences locally (never sent to any server)
 
 The extension does NOT request:
 - Access to your browsing history
@@ -44,8 +44,9 @@ The extension does NOT request:
 ## Source Code
 
 The complete source code is available for inspection. The extension consists of:
-- `manifest.json` - extension configuration (~15 lines)
-- `content.js` - filtering logic (~60 lines)
+- `manifest.json` - extension configuration
+- `content.js` - filtering logic
+- `popup.html/css/js` - settings UI
 
 You can audit the code yourself before installation.
 

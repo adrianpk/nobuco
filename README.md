@@ -30,8 +30,8 @@ Filters out posts with infantilized writing patterns:
 ## Privacy
 
 - **100% local processing** - your data never leaves your browser
-- **No permissions required** beyond reading LinkedIn pages
-- **Open source** - inspect the code yourself (2 files, ~50 lines total)
+- **Minimal permissions** - only `storage` (for settings) and reading LinkedIn pages
+- **Open source** - inspect the code yourself
 - **No tracking, no telemetry, no external connections**
 
 ## Installation (local testing)
@@ -45,14 +45,24 @@ Filters out posts with infantilized writing patterns:
 
 ## Configuration
 
+Click the Nobuco icon in your browser toolbar to open the settings popup:
+
+- **Filter spammy posts** - Hides posts with AI-style formatting, emoji spam, and engagement bait
+- **Filter polls** - Hides posts containing LinkedIn polls
+
+Both filters are enabled by default. Changes apply immediately.
+
+### Advanced
+
 Edit `content.js` to adjust:
-- `THRESHOLD` (0.0 to 1.0) - sensitivity of filtering
+- `THRESHOLD` (0.0 to 1.0) - sensitivity of spam filtering
 - `RULES` - add/remove heuristic patterns
 
 ## Technical details
 
 - **Manifest V3** - latest Chrome extension standard
-- **No host permissions** - only matches LinkedIn URLs
+- **Settings popup** - click extension icon to configure filters
+- **chrome.storage.sync** - settings persist across sessions
 - **MutationObserver** - handles LinkedIn's infinite scroll
 - **Conservative failure mode** - if unsure, post stays visible
 
