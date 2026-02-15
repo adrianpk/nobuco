@@ -111,7 +111,10 @@ function findPosts() {
   return document.querySelectorAll([
     'div.feed-shared-update-v2',
     'div[data-urn^="urn:li:activity"]',
-    'div.fie-impression-container'
+    'div.fie-impression-container',
+    // Group posts and newer LinkedIn feed structure
+    '[data-view-name="feed-full-update"]',
+    '[role="listitem"][componentkey*="Feed"]'
   ].join(', '));
 }
 
@@ -139,7 +142,11 @@ function hasPoll(post) {
   const pollSelectors = [
     'div.update-components-poll',
     'fieldset[role="radiogroup"]',
-    '.update-components-poll-option'
+    '.update-components-poll-option',
+    // New LinkedIn poll structure (2024+)
+    '[data-view-name="feed-poll-vote-option"]',
+    '[data-view-name="feed-poll-view-question"]',
+    '[data-view-name="feed-poll-voters-list"]'
   ];
 
   for (const selector of pollSelectors) {
